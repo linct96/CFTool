@@ -1,0 +1,12 @@
+{
+  "semi": false,
+  "singleQuote": true,
+  "ignorePatterns": [
+    "dist/**",
+    "dist-ssr/**",
+    "other/cfst/**",
+    "pnpm-lock.yaml",
+    "src-tauri/target/**",
+    "src-tauri/gen/**"
+  ]
+}
