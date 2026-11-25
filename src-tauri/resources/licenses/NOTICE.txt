@@ -1,0 +1,13 @@
+CFTool bundles separate upstream executables without modifications.
+
+CFST v2.3.5 — GPL-3.0 (see CFST.txt)
+Corresponding source: https://github.com/XIU2/CloudflareSpeedTest/tree/v2.3.5
+
+Xray-core v26.11.9 — MPL-2.0 (see Xray.txt)
+Corresponding source: https://github.com/XTLS/Xray-core/tree/v26.11.9
+
+Official Linux x86_64 release archives and SHA-256 digests:
+cfst_linux_amd64.tar.gz  c4c8fc76b4e1bf2bdb5ced8b765956d82dda7bc4eb59df5c04053f0f7db98d90
+https://github.com/XIU2/CloudflareSpeedTest/releases/download/v2.3.5/cfst_linux_amd64.tar.gz
+Xray-linux-64.zip        b651f7e1d9966ee2c1b1ee1bf8b52c72771824d3065dce96bbc8bcc19ed95f82
+https://github.com/XTLS/Xray-core/releases/download/v26.11.9/Xray-linux-64.zip

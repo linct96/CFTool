@@ -290,6 +290,11 @@ fn number<T: FromStr + PartialOrd + Display>(
     Ok(value)
 }
 
+#[cfg(any(target_os = "linux", test))]
+mod linux;
+#[cfg(target_os = "linux")]
+use linux::{route_warning, subscription_route_warning};
+
 fn tunnel_interface(interface: &str) -> bool {
     ["utun", "tun", "tap", "ppp", "ipsec"]
         .iter()
@@ -310,6 +315,7 @@ fn network_output(program: &str, args: &[&str], control: &Control) -> Result<Opt
     Ok(output)
 }
 
+#[cfg(any(target_os = "macos", test))]
 fn system_proxy_enabled(output: &str) -> bool {
     output
         .lines()
@@ -327,6 +333,7 @@ fn system_proxy_enabled(output: &str) -> bool {
 }
 
 fn proxy_warning(control: &Control) -> Result<Option<String>> {
+    control.check()?;
     if [
         "http_proxy",
         "https_proxy",
@@ -342,17 +349,20 @@ fn proxy_warning(control: &Control) -> Result<Option<String>> {
             "检测到代理环境变量，订阅或测速流量可能经过代理。".into(),
         ));
     }
-    Ok(
-        match network_output("/usr/sbin/scutil", &["--proxy"], control)? {
-            Some(output) if system_proxy_enabled(&output) => {
-                Some("macOS 已启用系统代理，订阅或测速流量可能经过代理。".into())
-            }
-            Some(_) => None,
-            None => Some("无法确认 macOS 系统代理状态。".into()),
-        },
-    )
+    #[cfg(target_os = "macos")]
+    let warning = match network_output("/usr/sbin/scutil", &["--proxy"], control)? {
+        Some(output) if system_proxy_enabled(&output) => {
+            Some("macOS 已启用系统代理，订阅或测速流量可能经过代理。".into())
+        }
+        Some(_) => None,
+        None => Some("无法确认 macOS 系统代理状态。".into()),
+    };
+    #[cfg(target_os = "linux")]
+    let warning = None;
+    Ok(warning)
 }
 
+#[cfg(any(target_os = "macos", test))]
 fn subscription_tunnel(routes: &str) -> Option<&str> {
     routes.lines().find_map(|line| {
         let mut columns = line.split_ascii_whitespace();
@@ -374,6 +384,7 @@ fn subscription_tunnel(routes: &str) -> Option<&str> {
     })
 }
 
+#[cfg(target_os = "macos")]
 fn subscription_route_warning(control: &Control) -> Result<Option<String>> {
     Ok(
         match network_output("/usr/sbin/netstat", &["-rn"], control)? {
@@ -385,6 +396,7 @@ fn subscription_route_warning(control: &Control) -> Result<Option<String>> {
     )
 }
 
+#[cfg(target_os = "macos")]
 fn route_warning(ips: &BTreeSet<IpAddr>, control: &Control) -> Result<Option<String>> {
     let mut incomplete = false;
     for ip in ips {
@@ -1485,7 +1497,7 @@ done < "$input"
         assert_eq!(starts.load(Ordering::Relaxed), 1);
     }
 
-    #[cfg(all(target_os = "macos", target_arch = "aarch64"))]
+    #[cfg(any(target_os = "linux", target_arch = "aarch64"))]
     #[test]
     fn resumes_appended_xray_without_rerunning_cfst_or_storing_node_credentials() {
         use std::net::TcpListener;
@@ -1496,7 +1508,7 @@ done < "$input"
         let second = TcpListener::bind("127.0.0.1:0").unwrap();
         let a = first.local_addr().unwrap();
         let b = second.local_addr().unwrap();
-        let binaries = Path::new(env!("CARGO_MANIFEST_DIR")).join("resources/bin");
+        let binaries = crate::engines::test_binaries();
         let cfst = binaries.join("cfst");
         let xray = binaries.join("xray");
         let control = Control::default();

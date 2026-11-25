@@ -34,3 +34,49 @@ jobs:
         run: |
           cargo fmt --all -- --check
           cargo clippy --locked --all-targets -- -D warnings
+
+  debian:
+    runs-on: ubuntu-24.04
+    container: node:26-trixie-slim
+    timeout-minutes: 45
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Install Debian build dependencies
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends build-essential ca-certificates curl file git iproute2 libdbus-1-dev libwebkit2gtk-4.1-dev pkg-config
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6
+      - name: Install rustup
+        run: |
+          curl --proto '=https' --tlsv1.2 -fsSL https://sh.rustup.rs | sh -s -- -y --default-toolchain none --no-modify-path
+          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+      - run: pnpm install --frozen-lockfile
+      - name: Check Debian Rust code
+        working-directory: src-tauri
+        run: |
+          cargo clippy --locked --all-targets -- -D warnings
+          cargo test --locked --lib detects_linux_tunnels
+          cargo test --locked --lib bundled_xray_switches_outbounds
+          cargo test --locked --lib resumes_appended_xray
+      - name: Build Debian package
+        run: pnpm tauri build --bundles deb -- --locked
+      - name: Verify bundled executables
+        run: |
+          package=(src-tauri/target/release/bundle/deb/*.deb)
+          test "$(dpkg-deb -f "${package[0]}" Architecture)" = amd64
+          contents=$(mktemp -d)
+          dpkg-deb -x "${package[0]}" "$contents"
+          engines="$contents/usr/lib/cftool/speedtest"
+          test -x "$engines/cfst/cfst"
+          test -x "$engines/xray"
+          cmp "$engines/cfst/cfst" src-tauri/resources/bin/linux-x86_64/cfst
+          cmp "$engines/xray" src-tauri/resources/bin/linux-x86_64/xray
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: cftool-debian-amd64
+          path: src-tauri/target/release/bundle/deb/*.deb

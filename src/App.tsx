@@ -18,26 +18,29 @@ function App() {
   const [running, setRunning] = useState(false)
   const [updating, setUpdating] = useState(false)
   const desktop = isTauri()
+  const nativeTitlebar = import.meta.env.TAURI_ENV_PLATFORM === 'linux'
   const settings = useCfstSettingsForm(desktop)
 
   return (
     <div className="app-shell flex h-dvh flex-col overflow-hidden bg-muted">
-      <header
-        data-tauri-drag-region="deep"
-        className="app-titlebar flex h-11 shrink-0 items-center justify-end px-3 text-xs select-none"
-      >
-        <output className="app-running-indicator flex items-center gap-1.5 text-app-muted-foreground">
-          {running && (
-            <>
-              <span
-                className="app-running-dot size-1.5 animate-pulse rounded-full bg-dot-status-working"
-                aria-hidden="true"
-              />
-              测速进行中
-            </>
-          )}
-        </output>
-      </header>
+      {(!nativeTitlebar || running) && (
+        <header
+          data-tauri-drag-region={nativeTitlebar ? undefined : 'deep'}
+          className="app-titlebar flex h-11 shrink-0 items-center justify-end px-3 text-xs select-none"
+        >
+          <output className="app-running-indicator flex items-center gap-1.5 text-app-muted-foreground">
+            {running && (
+              <>
+                <span
+                  className="app-running-dot size-1.5 animate-pulse rounded-full bg-dot-status-working"
+                  aria-hidden="true"
+                />
+                测速进行中
+              </>
+            )}
+          </output>
+        </header>
+      )}
       <div className="app-frame flex min-h-0 flex-1">
         <TooltipProvider>
           <nav

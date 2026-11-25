@@ -1,5 +1,7 @@
 # cftool CLI
 
+> 此 Python CLI 已停止维护，仅作归档。Debian 支持面向[桌面版](../README.md)。
+
 CFST 延迟测速，可选用 Xray 为 VLESS + WebSocket + TLS 节点复测入口 IP。不会改 hosts、系统代理或节点配置。
 
 [桌面版](../README.md) 位于项目根目录，也支持这两种模式。

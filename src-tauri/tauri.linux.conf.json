@@ -1,0 +1,15 @@
+{
+  "bundle": {
+    "targets": ["deb"],
+    "resources": {
+      "resources/bin/linux-x86_64/cfst": "speedtest/cfst/cfst",
+      "resources/bin/linux-x86_64/xray": "speedtest/xray"
+    },
+    "linux": {
+      "deb": {
+        "depends": ["ca-certificates", "curl", "iproute2"],
+        "section": "net"
+      }
+    }
+  }
+}

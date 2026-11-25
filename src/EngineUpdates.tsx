@@ -89,6 +89,7 @@ export function EngineUpdates({
     }
   }
 
+  const canUpdate = import.meta.env.TAURI_ENV_PLATFORM !== 'linux'
   const disabled = !desktop || running || Boolean(busy)
 
   return (
@@ -97,20 +98,22 @@ export function EngineUpdates({
         <h2 id="engine-tools-title" className="text-xs font-semibold">
           测速组件
         </h2>
-        <Button
-          size="sm"
-          variant="outline"
-          disabled={disabled}
-          aria-busy={busy?.action === 'check'}
-          onClick={() => void inspect('check')}
-        >
-          <RefreshCw
-            data-icon="inline-start"
-            className={busy?.action === 'check' ? 'animate-spin' : undefined}
-            aria-hidden="true"
-          />
-          {busy?.action === 'check' ? '检查中…' : '检查更新'}
-        </Button>
+        {canUpdate && (
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={disabled}
+            aria-busy={busy?.action === 'check'}
+            onClick={() => void inspect('check')}
+          >
+            <RefreshCw
+              data-icon="inline-start"
+              className={busy?.action === 'check' ? 'animate-spin' : undefined}
+              aria-hidden="true"
+            />
+            {busy?.action === 'check' ? '检查中…' : '检查更新'}
+          </Button>
+        )}
       </div>
       <ItemGroup className="engine-tools-list gap-2.5">
         {engineIds.map((engine) => {
@@ -175,7 +178,7 @@ export function EngineUpdates({
           )
         })}
       </ItemGroup>
-      {(!desktop || running) && (
+      {canUpdate && (!desktop || running) && (
         <p className="engine-tools-notice text-app-muted-foreground">
           {desktop ? '测速结束后可检查和更新组件。' : '请在桌面应用中检查和更新组件。'}
         </p>

@@ -4,6 +4,7 @@ import { defineConfig } from 'vite'
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
+  envPrefix: ['VITE_', 'TAURI_ENV_PLATFORM'],
   resolve: { tsconfigPaths: true },
   clearScreen: false,
   server: {

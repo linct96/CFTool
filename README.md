@@ -4,7 +4,7 @@ Tauri 2 + Rust，前端使用 React、TypeScript、Vite。界面参考 Cota：Ta
 
 ## 本地开发
 
-当前目标为 macOS Apple Silicon（macOS 13.3 或更新版本）。开发需要 [Rustup 和 Xcode Command Line Tools](https://v2.tauri.app/start/prerequisites/#macos)、[fnm](https://github.com/Schniz/fnm) 和 pnpm。`.node-version` 指定 Node.js 26，`package.json` 指定 pnpm 版本，`rust-toolchain.toml` 锁定 Rust。运行桌面测速不需要 Python；后端由 Rust 调用应用内附带的 CFST、Xray，并在 Xray 复测时使用 macOS 的 `/usr/bin/curl`。
+桌面目标为 macOS Apple Silicon（macOS 13.3 或更新版本）和 Debian 13 x86_64。开发需要 [Rustup](https://rustup.rs/)、[fnm](https://github.com/Schniz/fnm) 和 pnpm。macOS 还需要 [Xcode Command Line Tools](https://v2.tauri.app/start/prerequisites/#macos)。`.node-version` 指定 Node.js 26，`package.json` 指定 pnpm 版本，`rust-toolchain.toml` 锁定 Rust。运行桌面测速不需要 Python；后端由 Rust 调用应用内附带的 CFST、Xray，并通过系统的 `/usr/bin/curl` 拉取订阅和执行 Xray HTTPS 复测。
 
 在项目根目录运行（先按 fnm 文档初始化当前 Shell）：
 
@@ -20,7 +20,7 @@ pnpm dev
 - `pnpm lint`：Oxlint 类型感知检查，沿用 Cota 的 TanStack、React Hooks 和可访问性规则。
 - `pnpm format` / `pnpm format:check`：用 Oxfmt 格式化 / 检查。
 - `pnpm typecheck`：TypeScript 类型检查。
-- `pnpm build`：先运行 lint 和类型检查，再构建前端。GitHub Actions 在 macOS ARM64 上检查前端格式和构建，以及 Rust 的 rustfmt 和 Clippy；暂不运行测试。
+- `pnpm build`：先运行 lint 和类型检查，再构建前端。GitHub Actions 保留 macOS ARM64 检查，并在 Debian 13 x86_64 构建和上传 `.deb`、检查内置二进制。
 
 构建本机调试用的 `cftool.app`：
 
@@ -29,6 +29,22 @@ pnpm tauri build --debug --target aarch64-apple-darwin --bundles app -- --locked
 ```
 
 产物：`src-tauri/target/aarch64-apple-darwin/debug/bundle/macos/cftool.app`。未做分发签名或公证。
+
+### Debian 13 x86_64
+
+在 Debian 13 上按上面的步骤准备 Rustup、Node.js 和 pnpm，然后在项目根目录执行：
+
+```sh
+sudo apt update
+sudo apt install build-essential ca-certificates curl file git iproute2 libdbus-1-dev libwebkit2gtk-4.1-dev pkg-config
+pnpm install --frozen-lockfile
+pnpm tauri build --bundles deb -- --locked
+sudo apt install ./src-tauri/target/release/bundle/deb/*.deb
+```
+
+也可从 GitHub Actions 下载 `cftool-debian-amd64` 构建产物。安装后从应用菜单启动，测速不需要 root 或额外安装 CFST / Xray。Linux 使用原生标题栏；内置组件随 `.deb` 更新，设置页仅展示版本。内置组件来源见 [第三方许可](src-tauri/resources/licenses/NOTICE.txt)。
+
+Linux 上，手填 IP 使用 `ip route get` 查询实际出口；订阅下载前检查 IPv4 / IPv6 路由表和已知隧道接口，并检查代理环境变量。预检无法保证直连，也不能识别所有透明代理。数据沿用 Tauri 的 XDG 路径：`$XDG_DATA_HOME/com.cfspeed.desktop/`（默认为 `~/.local/share/com.cfspeed.desktop/`）。
 
 ## 当前范围
 
@@ -43,13 +59,13 @@ pnpm tauri build --debug --target aarch64-apple-darwin --bundles app -- --locked
 - `src/CfstSettings.tsx`：「设置」页的 CFST 参数用于下一次测速。桌面版会将有效修改自动保存到 `~/Library/Application Support/com.cfspeed.desktop/config.json` 的 `cfst` 字段，重启自动恢复。前端用 TanStack Form 和 Zod 校验并就地显示错误；启用 HTTPing 或下载测速时，自定义地址必须为不含账号密码的 HTTP / HTTPS URL，留空使用默认地址。没填默认端口时，纯 CFST 用 443；复测模式跟随节点端口。IP 行上显式填写的端口始终优先。
 - `src/styles.css`：界面主题 token；`components.json` 固定 shadcn/ui 预设。
 - `src-tauri/`：Rust 后端打包并调用 CFST 和 Xray，使用固定 IPC 启动、确认或取消测速，不开放通用 shell 权限。点击开始测速后，先校验候选 IP 和订阅链接，再检查 TUN/VPN 路由与代理设置。检测到风险或无法确认时，须确认后才创建任务、拉取订阅并启动 CFST。仅有订阅链接时，开测前通过本机路由表判断隧道风险，不提前下载订阅。候选列表校验完成后才写入可续测的历史。候选 IP 文件和 Xray 配置只在临时目录使用。
-- 「依赖工具」首次打开只读取本地版本和 3 天内的检查缓存。点击「检查更新」会检查 CFST 和 Xray 的官方 GitHub 稳定版，并复用 60 秒内的成功结果；缓存保存在 `~/Library/Application Support/com.cfspeed.desktop/cache/`，可跨重启保留。有新版时点击版本按钮会重新核对 GitHub 发布信息并下载 macOS ARM64 发布包，校验 SHA-256、架构和版本后安装到 `~/Library/Application Support/com.cfspeed.desktop/engines/`，不改写 `.app`。下一轮测速自动使用比内置版更新的已下载版本；可点击「恢复内置版本」删除对应下载。测速过程中不能安装或恢复组件。
+- macOS 上，「依赖工具」首次打开只读取本地版本和 3 天内的检查缓存。点击「检查更新」会检查 CFST 和 Xray 的官方 GitHub 稳定版，并复用 60 秒内的成功结果；缓存保存在 `~/Library/Application Support/com.cfspeed.desktop/cache/`，可跨重启保留。有新版时点击版本按钮会重新核对 GitHub 发布信息并下载 macOS ARM64 发布包，校验 SHA-256、架构和版本后安装到 `~/Library/Application Support/com.cfspeed.desktop/engines/`，不改写 `.app`。下一轮测速自动使用比内置版更新的已下载版本；可点击「恢复内置版本」删除对应下载。测速过程中不能安装或恢复组件。
 - 「测速历史 → 查看」在「优选」主界面回放原结果，可返回当前结果。每轮在 `~/Library/Application Support/com.cfspeed.desktop/history/` 中保存一个版本化 JSON，记录当时的生效参数、已展开的候选、任务状态和结果。CFST 原生 CSV 只作临时输入。已完成记录可单行重测，临时结果不会覆盖历史。旧 CSV 历史不会加载或迁移。
 - 暂停或中断后，从历史选择「继续测速」，沿用原计划，只执行未保存为完成的任务。仅测延迟时首批大小取 CFST 并发数，后续按实测耗时向约 10 秒一批调整；启用下载时，同一分组和实际端口仍一次跑完。Xray 按节点与入口保存完整复测结果。历史只保存节点配置指纹，不保存 VLESS 链接或凭据；缺少原节点时，需先恢复本地节点配置。
 
 改名后仍沿用原应用标识 `com.cfspeed.desktop`，已有节点和组件无需搬迁。
 
-也可在 [`other/`](other/README.md) 直接运行 Python CLI。节点、订阅和结果文件不随应用打包。
+[`other/`](other/README.md) 的 Python CLI 仅作归档，不再维护，也不在 Debian 支持范围内。节点、订阅和结果文件不随应用打包。
 
 ## 官方参考
 

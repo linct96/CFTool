@@ -21,6 +21,17 @@ const MAX_ARCHIVE: u64 = 64 * 1024 * 1024;
 const MAX_BINARY: u64 = 128 * 1024 * 1024;
 const RECHECK_AFTER: i64 = 60;
 const SHOW_CACHED_FOR: i64 = 3 * 24 * 60 * 60;
+const CAN_UPDATE: bool = cfg!(all(target_os = "macos", target_arch = "aarch64"));
+
+#[cfg(all(test, any(target_os = "linux", target_arch = "aarch64")))]
+pub(crate) fn test_binaries() -> PathBuf {
+    let path = Path::new(env!("CARGO_MANIFEST_DIR")).join("resources/bin");
+    if cfg!(target_os = "linux") {
+        path.join("linux-x86_64")
+    } else {
+        path
+    }
+}
 
 #[derive(Clone, Copy, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -272,6 +283,9 @@ impl Component {
     }
 
     fn has_download(&self) -> Result<bool> {
+        if !CAN_UPDATE {
+            return Ok(false);
+        }
         match fs::symlink_metadata(&self.root) {
             Err(e) if e.kind() == io::ErrorKind::NotFound => return Ok(false),
             Ok(meta) if meta.is_dir() => (),
@@ -428,8 +442,8 @@ pub async fn engine_update(
     action: Action,
     expected: Option<String>,
 ) -> std::result::Result<Status, String> {
-    if !cfg!(all(target_os = "macos", target_arch = "aarch64")) {
-        return Err("组件更新仅支持 macOS Apple Silicon".into());
+    if !CAN_UPDATE && !matches!(action, Action::Status) {
+        return Err("当前平台的组件随应用安装包更新".into());
     }
     let component = Component::new(&app, engine).map_err(|e| e.to_string())?;
     let cache_path = app
@@ -438,6 +452,9 @@ pub async fn engine_update(
         .ok()
         .map(|root| root.join("cache").join(format!("{}.json", engine.info().0)));
     tauri::async_runtime::spawn_blocking(move || -> Result<Status> {
+        if !CAN_UPDATE {
+            return component.status(None);
+        }
         let cache = app.state::<UpdateCache>();
         let mut cached = match engine {
             Engine::Cfst => &cache.cfst,
@@ -549,7 +566,7 @@ mod tests {
         let stage = PrivateDir::new(component.root.join("pending")).unwrap();
         let archive = stage.path().join("release.zip");
         let manifest = Path::new(env!("CARGO_MANIFEST_DIR"));
-        let bundled = manifest.join("resources/bin/cfst");
+        let bundled = test_binaries().join("cfst");
         assert!(
             command("/usr/bin/zip")
                 .arg("-jq")

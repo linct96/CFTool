@@ -425,9 +425,9 @@ pub fn sort_results(rows: &mut [Row]) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    #[cfg(all(target_os = "macos", target_arch = "aarch64"))]
+    #[cfg(any(target_os = "linux", target_arch = "aarch64"))]
     use {
-        crate::process::PrivateDir,
+        crate::{engines::test_binaries, process::PrivateDir},
         std::{fs, io::Write},
     };
 
@@ -485,7 +485,7 @@ mod tests {
         assert_eq!(assigned.len(), 13);
     }
 
-    #[cfg(all(target_os = "macos", target_arch = "aarch64"))]
+    #[cfg(any(target_os = "linux", target_arch = "aarch64"))]
     #[test]
     fn bundled_xray_switches_outbounds_on_one_port() {
         let work = PrivateDir::new(std::env::temp_dir().join(Uuid::new_v4().to_string())).unwrap();
@@ -506,7 +506,7 @@ mod tests {
         config["outbounds"][2] = json!({"tag": route_user(0, 1), "protocol": "blackhole"});
         let config_path = work.path().join("test.json");
         fs::write(&config_path, config.to_string()).unwrap();
-        let binary = Path::new(env!("CARGO_MANIFEST_DIR")).join("resources/bin/xray");
+        let binary = test_binaries().join("xray");
         let control = Control::default();
         drop(port);
         let mut engine = Running::start(
@@ -597,11 +597,11 @@ mod tests {
         assert_eq!(measurement("204 0.100"), Some(100.0));
         assert_eq!(measurement("302 0.100"), None);
 
-        #[cfg(all(target_os = "macos", target_arch = "aarch64"))]
+        #[cfg(any(target_os = "linux", target_arch = "aarch64"))]
         {
             let work =
                 PrivateDir::new(std::env::temp_dir().join(Uuid::new_v4().to_string())).unwrap();
-            let binary = Path::new(env!("CARGO_MANIFEST_DIR")).join("resources/bin/xray");
+            let binary = test_binaries().join("xray");
             let config_path = work.path().join("test.json");
             fs::write(&config_path, config.to_string()).unwrap();
             assert!(
