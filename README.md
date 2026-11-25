@@ -49,6 +49,8 @@ pnpm tauri build --debug --target aarch64-apple-darwin --bundles app -- --locked
 
 改名后仍沿用原应用标识 `com.cfspeed.desktop`，已有节点和组件无需搬迁。
 
+也可在 [`other/`](other/README.md) 直接运行 Python CLI。节点、订阅和结果文件不随应用打包。
+
 ## 官方参考
 
 - [Tauri 项目模板](https://v2.tauri.app/start/create-project/) · [Vite 集成](https://v2.tauri.app/start/frontend/vite/)

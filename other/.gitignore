@@ -1,0 +1,7 @@
+__pycache__/
+
+# Local CLI inputs and output
+/node.txt
+/ips.txt
+/ipsub.txt
+/result.csv
